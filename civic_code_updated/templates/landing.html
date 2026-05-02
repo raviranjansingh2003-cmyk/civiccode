@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Civic Code — Your World, Your Voice</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root { --primary: #ff006e; --bg: #0a0a0a; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: #f0f0f0; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; overflow-x: hidden; }
+a { color: var(--primary); text-decoration: none; }
+
+.hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  padding: 40px 20px; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #ff006e22 0%, transparent 70%);
+  pointer-events: none;
+}
+.orb {
+  position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none;
+}
+.orb1 { width: 500px; height: 500px; background: #ff006e18; top: -100px; left: -100px; }
+.orb2 { width: 400px; height: 400px; background: #9000ff12; bottom: -80px; right: -80px; }
+
+.logo { font-size: 1rem; color: var(--primary); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; opacity: 0.8; }
+h1 {
+  font-size: clamp(2.5rem, 8vw, 5.5rem); font-weight: 800;
+  line-height: 1.05; letter-spacing: -2px; margin-bottom: 24px;
+}
+h1 span { color: var(--primary); }
+.subtitle {
+  font-size: clamp(1rem, 2.5vw, 1.3rem); color: #888;
+  max-width: 560px; line-height: 1.6; margin-bottom: 48px;
+}
+
+.cta-group { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.btn {
+  padding: 14px 32px; border-radius: 14px; font-family: inherit;
+  font-size: 1rem; font-weight: 700; cursor: pointer; border: none;
+  transition: all 0.2s; display: inline-block;
+}
+.btn-primary { background: var(--primary); color: #fff; box-shadow: 0 8px 30px #ff006e44; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px #ff006e66; }
+.btn-ghost { background: transparent; color: #f0f0f0; border: 1px solid #2a2a2a; }
+.btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+
+.features {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px; max-width: 900px; width: 100%; margin-top: 80px;
+}
+.feature {
+  background: #141414; border: 1px solid #2a2a2a; border-radius: 16px;
+  padding: 24px; text-align: left; transition: all 0.2s;
+}
+.feature:hover { border-color: var(--primary); transform: translateY(-4px); }
+.feature .icon { font-size: 2rem; margin-bottom: 12px; }
+.feature h3 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+.feature p { font-size: 0.85rem; color: #666; line-height: 1.5; }
+
+.footer { text-align: center; color: #333; font-size: 0.8rem; padding: 40px 20px; }
+</style>
+</head>
+<body>
+<section class="hero">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <p class="logo">⚡ Civic Code</p>
+  <h1>Your World.<br><span>Your Voice.</span><br>Your Rules.</h1>
+  <p class="subtitle">
+    A next-gen social platform for Gen Z — share your POV, message anyone,
+    chat with your personal AI friend, and build your vibe.
+  </p>
+  <div class="cta-group">
+    <a href="/register" class="btn btn-primary">Join for Free →</a>
+    <a href="/login" class="btn btn-ghost">Sign In</a>
+  </div>
+  <div class="features">
+    <div class="feature">
+      <div class="icon">🔥</div>
+      <h3>Share Your POV</h3>
+      <p>Post takes on any topic — politics, culture, tech, or just life. Your voice matters.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">💬</div>
+      <h3>Message Anyone</h3>
+      <p>DM friends or find people by phone number. Like Telegram, but cooler.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🤖</div>
+      <h3>Personal AI Friend</h3>
+      <p>Name your AI, it remembers everything. A friend that actually listens.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🌍</div>
+      <h3>Translate Anything</h3>
+      <p>Built-in AI translator. No Google needed. Talk to the world.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">💜</div>
+      <h3>Vibe Score</h3>
+      <p>Your behavior shapes your score. Stay positive, stay powerful.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🎨</div>
+      <h3>Your Aesthetic</h3>
+      <p>Full color customization. Start with black + pink. Make it yours.</p>
+    </div>
+  </div>
+</section>
+<div class="footer">Made with ❤️ — Civic Code © 2024</div>
+</body>
+</html>

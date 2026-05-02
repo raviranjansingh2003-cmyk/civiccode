@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Civic Code{% block title %}{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="{{ user.theme_primary if user else '#ff006e' }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Civic Code">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+:root {
+  --primary: {{ user.theme_primary if user else '#ff006e' }};
+  --bg: {{ user.theme_bg if user else '#0a0a0a' }};
+  --surface: #141414;
+  --surface2: #1e1e1e;
+  --border: #2a2a2a;
+  --text: #f0f0f0;
+  --muted: #888;
+  --radius: 16px;
+  --glow: 0 0 20px {{ user.theme_primary if user else '#ff006e' }}44;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  min-height: 100vh;
+}
+a { color: var(--primary); text-decoration: none; }
+a:hover { opacity: 0.85; }
+
+.navbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(10,10,10,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 60px;
+}
+.nav-brand {
+  font-weight: 700; font-size: 1.3rem; letter-spacing: -0.5px;
+  color: var(--primary);
+  text-shadow: var(--glow);
+}
+.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-links a {
+  color: var(--muted); padding: 8px 14px; border-radius: 10px;
+  font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.nav-links a:hover, .nav-links a.active {
+  color: var(--text); background: var(--surface2);
+}
+.nav-links a.active { color: var(--primary); }
+.badge {
+  background: var(--primary); color: #fff;
+  font-size: 0.65rem; padding: 2px 6px; border-radius: 99px;
+  font-weight: 700; min-width: 18px; text-align: center;
+}
+
+.main-container {
+  max-width: 1100px; margin: 0 auto;
+  padding: 76px 16px 80px;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 20px; border-radius: var(--radius);
+  font-family: inherit; font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.2s;
+}
+.btn-primary {
+  background: var(--primary); color: #fff;
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+.btn-primary:hover { transform: translateY(-1px); opacity: 0.9; }
+.btn-ghost {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--primary); }
+.btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+.btn-icon {
+  background: var(--surface2); color: var(--muted);
+  border: 1px solid var(--border); width: 36px; height: 36px;
+  padding: 0; border-radius: 10px; justify-content: center;
+}
+.btn-icon:hover { color: var(--primary); border-color: var(--primary); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.card-hover { transition: all 0.2s; }
+.card-hover:hover { border-color: var(--primary); transform: translateY(-2px); }
+
+.input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 12px 16px; border-radius: 12px;
+  font-family: inherit; font-size: 0.95rem; transition: border 0.2s;
+  outline: none;
+}
+.input:focus { border-color: var(--primary); }
+.input::placeholder { color: var(--muted); }
+select.input { cursor: pointer; }
+textarea.input { resize: vertical; min-height: 80px; }
+
+.avatar {
+  border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--border); background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: var(--primary); overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.flash-messages {
+  position: fixed; top: 70px; right: 16px; z-index: 2000;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.flash {
+  padding: 12px 18px; border-radius: 12px; font-size: 0.9rem;
+  font-weight: 500; animation: slideIn 0.3s ease;
+  max-width: 320px; border: 1px solid;
+}
+.flash.success { background: #0d2a1a; border-color: #00ff88; color: #00ff88; }
+.flash.error { background: #2a0d0d; border-color: #ff4444; color: #ff4444; }
+.flash.warning { background: #2a1a0d; border-color: #ff8800; color: #ff8800; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.vibe-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 700;
+}
+
+.bottom-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(10,10,10,0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding: 8px 0; justify-content: space-around; align-items: center;
+}
+.bottom-nav a {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--muted); font-size: 0.65rem; font-weight: 500; padding: 4px;
+  transition: color 0.2s;
+}
+.bottom-nav a .icon { font-size: 1.3rem; }
+.bottom-nav a.active, .bottom-nav a:hover { color: var(--primary); }
+
+@media (max-width: 768px) {
+  .navbar .nav-links { display: none; }
+  .bottom-nav { display: flex; }
+  .main-container { padding: 76px 12px 80px; }
+}
+
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 5000;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 28px; max-width: 460px; width: 90%;
+  max-height: 80vh; overflow-y: auto;
+}
+.modal h3 { font-size: 1.1rem; margin-bottom: 16px; }
+
+.spinner {
+  width: 20px; height: 20px; border: 2px solid var(--border);
+  border-top-color: var(--primary); border-radius: 50%;
+  animation: spin 0.7s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+{% block extra_styles %}{% endblock %}
+</style>
+</head>
+<body>
+{% if user %}
+<nav class="navbar">
+  <a href="/" class="nav-brand">⚡ Civic Code</a>
+  <div class="nav-links">
+    <a href="/" {% if request.endpoint == 'index' %}class="active"{% endif %}>🏠 Feed</a>
+    <a href="/messages" {% if request.endpoint == 'messages' %}class="active"{% endif %}>
+      💬 Messages {% if unread is defined and unread > 0 %}<span class="badge">{{ unread }}</span>{% endif %}
+    </a>
+    <a href="/ai-chat" {% if request.endpoint == 'ai_chat' %}class="active"{% endif %}>🤖 {{ user.ai_name or 'AI' }}</a>
+    <a href="/search" {% if request.endpoint == 'search_users' %}class="active"{% endif %}>🔍 Explore</a>
+    <a href="/profile/{{ user.username }}" {% if request.endpoint == 'profile' %}class="active"{% endif %}>👤 Me</a>
+    <a href="/settings">⚙️</a>
+    <a href="/logout" style="color:#ff4444;">Exit</a>
+  </div>
+</nav>
+{% endif %}
+
+<div class="flash-messages" id="flashMessages">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="flash {{ cat }}" onclick="this.remove()">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+</div>
+
+{% block body %}{% endblock %}
+
+{% if user %}
+<nav class="bottom-nav">
+  <a href="/" class="{{ 'active' if request.endpoint == 'index' }}">
+    <span class="icon">🏠</span>Feed
+  </a>
+  <a href="/messages" class="{{ 'active' if request.endpoint == 'messages' }}">
+    <span class="icon">💬</span>Chat
+    {% if unread is defined and unread > 0 %}<span class="badge">{{ unread }}</span>{% endif %}
+  </a>
+  <a href="/ai-chat" class="{{ 'active' if request.endpoint == 'ai_chat' }}">
+    <span class="icon">🤖</span>AI
+  </a>
+  <a href="/search" class="{{ 'active' if request.endpoint == 'search_users' }}">
+    <span class="icon">🔍</span>Explore
+  </a>
+  <a href="/profile/{{ user.username }}" class="{{ 'active' if request.endpoint == 'profile' }}">
+    <span class="icon">👤</span>Me
+  </a>
+</nav>
+{% endif %}
+
+<!-- Incoming call overlay -->
+{% if user %}
+<div id="incomingCallOverlay" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);align-items:center;justify-content:center;flex-direction:column;gap:20px;">
+  <div style="text-align:center;">
+    <div id="callAvatar" style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#9000ff);display:flex;align-items:center;justify-content:center;font-size:2.5rem;margin:0 auto 16px;animation:callPulse 1.5s infinite;box-shadow:0 0 0 0 color-mix(in srgb,var(--primary) 60%,transparent);">👤</div>
+    <div id="callCallerName" style="font-size:1.4rem;font-weight:700;margin-bottom:4px;"></div>
+    <div id="callTypeLabel" style="color:var(--muted);font-size:0.9rem;"></div>
+  </div>
+  <div style="display:flex;gap:20px;margin-top:10px;">
+    <button onclick="rejectIncomingCall()" style="width:64px;height:64px;border-radius:50%;background:#ff3333;border:none;font-size:1.6rem;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">📵</button>
+    <button onclick="acceptIncomingCall()" style="width:64px;height:64px;border-radius:50%;background:#00cc55;border:none;font-size:1.6rem;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">📞</button>
+  </div>
+</div>
+
+<!-- PWA install banner -->
+<div id="pwaInstallBanner" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:4000;background:var(--surface);border:1px solid var(--primary);border-radius:16px;padding:14px 20px;display:flex;align-items:center;gap:12px;max-width:360px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+  <img src="/static/icons/icon-72.png" style="width:40px;height:40px;border-radius:10px;">
+  <div style="flex:1;">
+    <div style="font-weight:700;font-size:0.9rem;">Install Civic Code</div>
+    <div style="font-size:0.78rem;color:var(--muted);">Add to your home screen</div>
+  </div>
+  <button onclick="installPWA()" style="padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-family:inherit;font-weight:700;font-size:0.85rem;cursor:pointer;">Install</button>
+  <button onclick="document.getElementById('pwaInstallBanner').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;">✕</button>
+</div>
+{% endif %}
+
+<style>
+@keyframes callPulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 60%, transparent); }
+  70% { box-shadow: 0 0 0 20px color-mix(in srgb, var(--primary) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+</style>
+
+<script>
+setTimeout(() => {
+  document.querySelectorAll('.flash').forEach(el => {
+    el.style.opacity = '0'; el.style.transition = 'opacity 0.5s';
+    setTimeout(() => el.remove(), 500);
+  });
+}, 4000);
+
+// Service worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+}
+
+// PWA install prompt
+let pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  pwaPrompt = e;
+  const banner = document.getElementById('pwaInstallBanner');
+  if (banner) { banner.style.display = 'flex'; setTimeout(() => { banner.style.display = 'none'; }, 15000); }
+});
+
+function installPWA() {
+  if (pwaPrompt) { pwaPrompt.prompt(); pwaPrompt.userChoice.then(() => { document.getElementById('pwaInstallBanner').style.display = 'none'; pwaPrompt = null; }); }
+}
+
+{% if user %}
+// Global SocketIO for incoming calls
+const globalSocket = io();
+const myUserId = {{ user.id }};
+const myUsername = {{ user.username | tojson }};
+
+globalSocket.emit('join_call_room', { room: 'user_' + myUserId });
+
+let incomingCallData = null;
+
+globalSocket.on('incoming_call', (data) => {
+  if (data.callee_id !== myUserId) return;
+  incomingCallData = data;
+  const overlay = document.getElementById('incomingCallOverlay');
+  document.getElementById('callCallerName').textContent = '@' + data.caller_name;
+  document.getElementById('callTypeLabel').textContent = data.call_type === 'video' ? '📹 Incoming Video Call' : '📞 Incoming Voice Call';
+  overlay.style.display = 'flex';
+  // Ringtone using AudioContext
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    function ring() {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 880; gain.gain.value = 0.3;
+      osc.start(); osc.stop(ctx.currentTime + 0.3);
+    }
+    overlay._ringInterval = setInterval(ring, 1200);
+  } catch(e) {}
+});
+
+function acceptIncomingCall() {
+  if (!incomingCallData) return;
+  clearInterval(document.getElementById('incomingCallOverlay')._ringInterval);
+  document.getElementById('incomingCallOverlay').style.display = 'none';
+  const type = incomingCallData.call_type;
+  const callerId = incomingCallData.caller_id;
+  globalSocket.emit('call_accepted', { room: 'call_' + Math.min(myUserId, callerId) + '_' + Math.max(myUserId, callerId), callee_id: myUserId, caller_id: callerId });
+  window.location.href = '/call/' + callerId + '?type=' + type + '&incoming=1';
+}
+
+function rejectIncomingCall() {
+  if (!incomingCallData) return;
+  clearInterval(document.getElementById('incomingCallOverlay')._ringInterval);
+  document.getElementById('incomingCallOverlay').style.display = 'none';
+  const callerId = incomingCallData.caller_id;
+  globalSocket.emit('call_rejected', { room: 'call_' + Math.min(myUserId, callerId) + '_' + Math.max(myUserId, callerId), caller_id: callerId });
+  incomingCallData = null;
+}
+{% endif %}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

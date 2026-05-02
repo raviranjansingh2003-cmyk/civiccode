@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %} — Settings{% endblock %}
+
+{% block extra_styles %}
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 768px) { .settings-grid { grid-template-columns: 1fr; } }
+.settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+.settings-card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 18px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.form-group { margin-bottom: 14px; }
+label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+.color-row { display: flex; align-items: center; gap: 10px; }
+.color-row input[type="color"] { width: 44px; height: 36px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; background: none; padding: 2px; }
+.color-preview { flex: 1; height: 36px; border-radius: 10px; transition: background 0.3s; }
+.preset-colors { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.preset-dot { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+.preset-dot:hover, .preset-dot.active { transform: scale(1.15); border-color: #fff; }
+.vibe-section { background: var(--surface2); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+.log-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+.log-item:last-child { border-bottom: none; }
+.log-delta { font-weight: 700; }
+.log-delta.pos { color: #00ff88; }
+.log-delta.neg { color: #ff4444; }
+{% endblock %}
+
+{% block body %}
+<div class="main-container">
+  <h1 style="font-size:1.5rem;font-weight:700;margin-bottom:20px;">⚙️ Settings</h1>
+  <div class="settings-grid">
+    <div>
+      <form method="POST" enctype="multipart/form-data">
+        <div class="settings-card" style="margin-bottom:20px;">
+          <h2>👤 Profile</h2>
+          <div class="form-group" style="text-align:center;margin-bottom:20px;">
+            <div style="width:80px;height:80px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:var(--primary);margin:0 auto 10px;overflow:hidden;">
+              {% if user.avatar %}<img src="/uploads/{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover;">{% else %}{{ user.username[0].upper() }}{% endif %}
+            </div>
+            <label for="avatarFile" style="cursor:pointer;color:var(--primary);font-size:0.9rem;">📷 Change Avatar</label>
+            <input type="file" id="avatarFile" name="avatar" accept="image/*" style="display:none;">
+          </div>
+          <div class="form-group">
+            <label>Bio</label>
+            <textarea class="input" name="bio" placeholder="Tell the world who you are...">{{ user.bio or '' }}</textarea>
+          </div>
+        </div>
+
+        <div class="settings-card" style="margin-bottom:20px;">
+          <h2>🤖 AI Friend</h2>
+          <div class="form-group">
+            <label>Name your AI</label>
+            <input class="input" name="ai_name" value="{{ user.ai_name or 'Aria' }}" placeholder="e.g. Nova, Kai, Alex...">
+            <p style="font-size:0.8rem;color:var(--muted);margin-top:4px;">Your AI will remember this name and all your conversations.</p>
+          </div>
+        </div>
+
+        <div class="settings-card" style="margin-bottom:20px;">
+          <h2>🎨 Theme</h2>
+          <div class="form-group">
+            <label>Accent Color</label>
+            <div class="color-row">
+              <input type="color" name="theme_primary" id="colorPrimary" value="{{ user.theme_primary or '#ff006e' }}" oninput="updatePreview()">
+              <div class="color-preview" id="colorPreview" style="background:{{ user.theme_primary or '#ff006e' }};"></div>
+            </div>
+            <div class="preset-colors">
+              <div class="preset-dot" style="background:#ff006e;" onclick="setColor('#ff006e')" title="Hot Pink"></div>
+              <div class="preset-dot" style="background:#9000ff;" onclick="setColor('#9000ff')" title="Purple"></div>
+              <div class="preset-dot" style="background:#00d4ff;" onclick="setColor('#00d4ff')" title="Cyan"></div>
+              <div class="preset-dot" style="background:#00ff88;" onclick="setColor('#00ff88')" title="Neon Green"></div>
+              <div class="preset-dot" style="background:#ff8c00;" onclick="setColor('#ff8c00')" title="Orange"></div>
+              <div class="preset-dot" style="background:#ff4444;" onclick="setColor('#ff4444')" title="Red"></div>
+              <div class="preset-dot" style="background:#ffd700;" onclick="setColor('#ffd700')" title="Gold"></div>
+              <div class="preset-dot" style="background:#00ffcc;" onclick="setColor('#00ffcc')" title="Mint"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Background Color</label>
+            <div class="color-row">
+              <input type="color" name="theme_bg" id="colorBg" value="{{ user.theme_bg or '#0a0a0a' }}" oninput="updateBg()">
+              <div id="bgPreview" style="flex:1;height:36px;border-radius:10px;background:{{ user.theme_bg or '#0a0a0a' }};border:1px solid var(--border);transition:background 0.3s;"></div>
+            </div>
+            <div class="preset-colors">
+              <div class="preset-dot" style="background:#0a0a0a;border:1px solid #333;" onclick="setBg('#0a0a0a')" title="Pure Black"></div>
+              <div class="preset-dot" style="background:#0d0d1a;" onclick="setBg('#0d0d1a')" title="Deep Navy"></div>
+              <div class="preset-dot" style="background:#0a1a0a;" onclick="setBg('#0a1a0a')" title="Deep Green"></div>
+              <div class="preset-dot" style="background:#1a0a0a;" onclick="setBg('#1a0a0a')" title="Deep Red"></div>
+              <div class="preset-dot" style="background:#1a0d0a;" onclick="setBg('#1a0d0a')" title="Deep Brown"></div>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;">Save All Settings ✓</button>
+      </form>
+    </div>
+
+    <div>
+      <div class="settings-card" style="margin-bottom:20px;">
+        <h2>⚡ Vibe Score</h2>
+        <div class="vibe-section">
+          <div style="font-size:3rem;font-weight:800;color:{{ vibe_color }};">{{ user.behavior_score }}</div>
+          <div style="font-size:0.85rem;color:var(--muted);margin-top:2px;">out of 100</div>
+          <div style="height:10px;background:var(--border);border-radius:99px;margin:10px 0;overflow:hidden;">
+            <div style="height:100%;width:{{ user.behavior_score }}%;background:{{ vibe_color }};border-radius:99px;transition:width 0.5s;"></div>
+          </div>
+          <span class="vibe-badge" style="background:{{ vibe_color }}22;color:{{ vibe_color }};border:1px solid {{ vibe_color }}44;">{{ vibe_label }}</span>
+          <p style="font-size:0.82rem;color:var(--muted);margin-top:10px;line-height:1.5;">
+            Your vibe score reflects your language. Positive words boost it, negative words lower it. Stay kind, stay powerful.
+          </p>
+        </div>
+        <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:10px;color:var(--muted);">Recent Activity</h3>
+        {% if behavior_log %}
+        {% for log in behavior_log %}
+        <div class="log-item">
+          <span>{{ log.reason }}</span>
+          <span class="log-delta {% if log.change > 0 %}pos{% else %}neg{% endif %}">{{ '+' if log.change > 0 else '' }}{{ log.change }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p style="color:var(--muted);font-size:0.85rem;">No activity yet. Start posting!</p>
+        {% endif %}
+      </div>
+
+      <div class="settings-card">
+        <h2>ℹ️ Account Info</h2>
+        <div style="font-size:0.88rem;color:var(--muted);line-height:2;">
+          <div>👤 <strong style="color:var(--text);">@{{ user.username }}</strong></div>
+          {% if user.email %}<div>📧 {{ user.email }}</div>{% endif %}
+          {% if user.phone %}<div>📞 {{ user.phone }}</div>{% endif %}
+          {% if user.full_name %}<div>🪪 {{ user.full_name }}</div>{% endif %}
+          {% if user.address %}<div>📍 {{ user.address }}</div>{% endif %}
+          <div>📅 Joined {{ user.created_at[:10] }}</div>
+        </div>
+        <a href="/logout" class="btn btn-ghost" style="width:100%;margin-top:16px;justify-content:center;color:#ff4444;border-color:#ff444433;">Sign Out</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updatePreview() {
+  document.getElementById('colorPreview').style.background = document.getElementById('colorPrimary').value;
+}
+function updateBg() {
+  document.getElementById('bgPreview').style.background = document.getElementById('colorBg').value;
+}
+function setColor(hex) {
+  document.getElementById('colorPrimary').value = hex;
+  updatePreview();
+}
+function setBg(hex) {
+  document.getElementById('colorBg').value = hex;
+  updateBg();
+}
+</script>
+{% endblock %}

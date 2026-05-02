@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %} — Chat with {{ user.ai_name or 'Aria' }}{% endblock %}
+
+{% block extra_styles %}
+.ai-layout { display: flex; flex-direction: column; height: calc(100vh - 76px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.ai-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: linear-gradient(90deg, var(--surface), color-mix(in srgb, var(--primary) 8%, var(--surface))); }
+.ai-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #9000ff); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 40%, transparent); animation: pulse 3s infinite; }
+@keyframes pulse { 0%,100%{ box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 40%, transparent); } 50% { box-shadow: 0 0 35px color-mix(in srgb, var(--primary) 60%, transparent); } }
+.ai-name-badge { font-weight: 700; font-size: 1rem; }
+.ai-sub { font-size: 0.78rem; color: var(--muted); }
+.ai-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.ai-msg-wrap { display: flex; gap: 10px; }
+.ai-msg-wrap.user { flex-direction: row-reverse; }
+.ai-msg-ava { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; margin-top: 2px; }
+.ai-bubble { max-width: 72%; padding: 12px 16px; border-radius: 18px; font-size: 0.93rem; line-height: 1.6; word-break: break-word; }
+.ai-bubble.ai { background: var(--surface2); border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+.ai-bubble.user { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.ai-time { font-size: 0.7rem; color: var(--muted); margin-top: 4px; text-align: right; }
+.ai-time.ai-side { text-align: left; }
+.thinking { display: flex; gap: 4px; align-items: center; padding: 14px 16px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,80%,100% { opacity: 0.3; } 40% { opacity: 1; } }
+.ai-input-area { padding: 14px 16px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+.ai-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 16px; font-family: inherit; font-size: 0.93rem; outline: none; resize: none; max-height: 120px; min-height: 44px; transition: border 0.2s; }
+.ai-input:focus { border-color: var(--primary); }
+.ai-send { width: 44px; height: 44px; border-radius: 50%; background: var(--primary); border: none; color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 15px color-mix(in srgb, var(--primary) 40%, transparent); flex-shrink: 0; }
+.ai-send:hover { transform: scale(1.1); }
+.ai-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.quick-prompts { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 16px 10px; }
+.quick-prompt { padding: 5px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 99px; font-size: 0.78rem; color: var(--muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.quick-prompt:hover { border-color: var(--primary); color: var(--primary); }
+{% endblock %}
+
+{% block body %}
+<div class="main-container" style="padding-top:72px;padding-bottom:0;height:100vh;display:flex;flex-direction:column;">
+  <div class="ai-layout" style="flex:1;">
+    <div class="ai-header">
+      <div class="ai-avatar">🤖</div>
+      <div>
+        <div class="ai-name-badge">{{ user.ai_name or 'Aria' }}</div>
+        <div class="ai-sub">Your personal AI friend · always here for you</div>
+      </div>
+      <a href="/settings" style="margin-left:auto;font-size:0.8rem;color:var(--muted);">✏️ Rename</a>
+    </div>
+
+    <div class="ai-messages" id="aiMessages">
+      {% if not history %}
+      <div class="ai-msg-wrap">
+        <div class="ai-msg-ava" style="background:linear-gradient(135deg,var(--primary),#9000ff);">🤖</div>
+        <div>
+          <div class="ai-bubble ai">Hey {{ user.username }}! I'm {{ user.ai_name or 'Aria' }} — your personal AI friend 💜 I remember everything we talk about. What's on your mind?</div>
+          <div class="ai-time ai-side">just now</div>
+        </div>
+      </div>
+      {% endif %}
+      {% for msg in history %}
+      <div class="ai-msg-wrap {% if msg.role == 'user' %}user{% endif %}">
+        {% if msg.role == 'assistant' %}
+        <div class="ai-msg-ava" style="background:linear-gradient(135deg,var(--primary),#9000ff);">🤖</div>
+        {% endif %}
+        <div>
+          <div class="ai-bubble {% if msg.role == 'user' %}user{% else %}ai{% endif %}">{{ msg.content }}</div>
+          <div class="ai-time {% if msg.role == 'assistant' %}ai-side{% endif %}">{{ msg.created_at[11:16] }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="quick-prompts">
+      <span class="quick-prompt" onclick="setPrompt('How am I doing?')">How am I doing?</span>
+      <span class="quick-prompt" onclick="setPrompt('Give me motivation 🔥')">Motivate me 🔥</span>
+      <span class="quick-prompt" onclick="setPrompt('Tell me something interesting')">Fun fact</span>
+      <span class="quick-prompt" onclick="setPrompt('I need advice on something...')">I need advice</span>
+      <span class="quick-prompt" onclick="setPrompt('What do you remember about me?')">What do you know about me?</span>
+    </div>
+
+    <div class="ai-input-area">
+      <textarea class="ai-input" id="aiInput" placeholder="Talk to {{ user.ai_name or 'Aria' }}..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI();}"></textarea>
+      <button class="ai-send" id="aiSendBtn" onclick="sendAI()">➤</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const aiName = {{ (user.ai_name or 'Aria') | tojson }};
+const messagesEl = document.getElementById('aiMessages');
+messagesEl.scrollTop = messagesEl.scrollHeight;
+
+function setPrompt(text) {
+  document.getElementById('aiInput').value = text;
+  document.getElementById('aiInput').focus();
+}
+
+function sendAI() {
+  const input = document.getElementById('aiInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const sendBtn = document.getElementById('aiSendBtn');
+  sendBtn.disabled = true;
+
+  appendMsg(msg, 'user', 'just now');
+  input.value = '';
+
+  const thinkEl = document.createElement('div');
+  thinkEl.className = 'ai-msg-wrap';
+  thinkEl.innerHTML = `<div class="ai-msg-ava" style="background:linear-gradient(135deg,var(--primary),#9000ff);">🤖</div><div class="ai-bubble ai"><div class="thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  messagesEl.appendChild(thinkEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  fetch('/ai-chat/send', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message: msg})
+  }).then(r => r.json()).then(d => {
+    thinkEl.remove();
+    appendMsg(d.reply, 'assistant', 'just now');
+    sendBtn.disabled = false;
+  }).catch(() => {
+    thinkEl.remove();
+    appendMsg('Oops, something went wrong 😅', 'assistant', 'just now');
+    sendBtn.disabled = false;
+  });
+}
+
+function appendMsg(content, role, time) {
+  const isUser = role === 'user';
+  const wrap = document.createElement('div');
+  wrap.className = `ai-msg-wrap ${isUser ? 'user' : ''}`;
+  const ava = isUser ? '' : `<div class="ai-msg-ava" style="background:linear-gradient(135deg,var(--primary),#9000ff);">🤖</div>`;
+  wrap.innerHTML = `${ava}<div><div class="ai-bubble ${isUser ? 'user' : 'ai'}">${escHtml(content)}</div><div class="ai-time ${isUser ? '' : 'ai-side'}">${time}</div></div>`;
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function escHtml(str) {
+  const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
+}
+</script>
+{% endblock %}

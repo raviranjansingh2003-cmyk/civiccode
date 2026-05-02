@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Call — Civic Code</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: {{ user.theme_primary or '#ff006e' }};
+  --bg: {{ user.theme_bg or '#0a0a0a' }};
+}
+body {
+  background: var(--bg); color: #f0f0f0;
+  font-family: 'Space Grotesk', sans-serif;
+  height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+
+.call-container { position: relative; width: 100vw; height: 100vh; }
+
+/* Video elements */
+#remoteVideo {
+  width: 100%; height: 100%; object-fit: cover; background: #111;
+  position: absolute; inset: 0;
+}
+#localVideo {
+  position: absolute; bottom: 120px; right: 16px;
+  width: 100px; height: 140px; border-radius: 14px; object-fit: cover;
+  background: #222; border: 2px solid var(--primary);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 10;
+  cursor: pointer; transition: all 0.3s;
+}
+#localVideo:hover { transform: scale(1.05); }
+
+/* Overlay for voice call / waiting */
+.call-overlay {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.95) 100%);
+}
+.caller-avatar {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #9000ff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8rem; font-weight: 700;
+  margin-bottom: 20px;
+  animation: avatarPulse 2s infinite;
+}
+@keyframes avatarPulse {
+  0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 50%, transparent); }
+  50% { box-shadow: 0 0 0 24px color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+.caller-name { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+.call-status { font-size: 0.9rem; color: #888; }
+
+/* Controls bar */
+.controls {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+  padding: 20px; display: flex; justify-content: center; gap: 16px; align-items: center;
+  background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+}
+.ctrl-btn {
+  width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.ctrl-btn:hover { transform: scale(1.1); }
+.ctrl-btn.mute { background: rgba(255,255,255,0.15); }
+.ctrl-btn.mute.active { background: #ff4444; }
+.ctrl-btn.video-off { background: rgba(255,255,255,0.15); }
+.ctrl-btn.video-off.active { background: #ff4444; }
+.ctrl-btn.speaker { background: rgba(255,255,255,0.15); }
+.ctrl-btn.end-call { background: #ff3333; width: 66px; height: 66px; font-size: 1.6rem; }
+.ctrl-btn.end-call:hover { background: #ff0000; }
+
+/* Timer */
+.call-timer {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 20; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+  padding: 6px 16px; border-radius: 99px; font-size: 0.85rem; font-weight: 600;
+}
+
+/* Back button */
+.back-btn {
+  position: absolute; top: 16px; left: 16px; z-index: 20;
+  width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.5);
+  border: none; color: #fff; font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none;
+}
+</style>
+</head>
+<body>
+<div class="call-container">
+  <!-- Remote video (full screen for video calls) -->
+  <video id="remoteVideo" autoplay playsinline></video>
+
+  <!-- Local video preview (video calls) -->
+  <video id="localVideo" autoplay playsinline muted style="display:none;"></video>
+
+  <!-- Overlay (shown during voice calls or while waiting) -->
+  <div class="call-overlay" id="callOverlay">
+    <div class="caller-avatar" id="callerAvatarEl">
+      {% if other.avatar %}
+      <img src="/uploads/{{ other.avatar }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+      {% else %}
+      {{ other.username[0].upper() }}
+      {% endif %}
+    </div>
+    <div class="caller-name">@{{ other.username }}</div>
+    <div class="call-status" id="callStatus">Calling...</div>
+  </div>
+
+  <!-- Back button -->
+  <a href="/messages/{{ other.id }}" class="back-btn" id="backBtn">‹</a>
+
+  <!-- Timer -->
+  <div class="call-timer" id="callTimer" style="display:none;">00:00</div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="ctrl-btn mute" id="muteBtn" onclick="toggleMute()" title="Mute">🎤</button>
+    <button class="ctrl-btn video-off" id="videoBtn" onclick="toggleVideo()" title="Camera" {% if call_type == 'voice' %}style="display:none"{% endif %}>📹</button>
+    <button class="ctrl-btn end-call" onclick="endCall()" title="End Call">📵</button>
+    <button class="ctrl-btn speaker" id="speakerBtn" onclick="toggleSpeaker()" title="Speaker">🔊</button>
+  </div>
+</div>
+
+<script>
+const myId = {{ user.id }};
+const myName = {{ user.username | tojson }};
+const otherId = {{ other.id }};
+const otherName = {{ other.username | tojson }};
+const callType = new URLSearchParams(location.search).get('type') || 'voice';
+const isIncoming = new URLSearchParams(location.search).get('incoming') === '1';
+const callRoom = 'call_' + Math.min(myId, otherId) + '_' + Math.max(myId, otherId);
+
+const STUN_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
+  ]
+};
+
+let localStream = null;
+let pc = null;
+let isMuted = false;
+let isVideoOff = false;
+let timerInterval = null;
+let callSeconds = 0;
+
+const socket = io();
+socket.emit('join_call_room', { room: 'user_' + myId });
+socket.emit('join_call_room', { room: callRoom });
+
+async function startCall() {
+  try {
+    const constraints = {
+      audio: true,
+      video: callType === 'video'
+    };
+    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch(e) {
+    // Try audio only if video fails
+    try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch(e2) {
+      document.getElementById('callStatus').textContent = 'Microphone access denied';
+      return;
+    }
+  }
+
+  if (callType === 'video' && localStream.getVideoTracks().length > 0) {
+    const localVideo = document.getElementById('localVideo');
+    localVideo.srcObject = localStream;
+    localVideo.style.display = 'block';
+  }
+
+  pc = new RTCPeerConnection(STUN_SERVERS);
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+  pc.ontrack = (e) => {
+    const remoteVideo = document.getElementById('remoteVideo');
+    remoteVideo.srcObject = e.streams[0];
+    if (callType === 'video') {
+      document.getElementById('callOverlay').style.opacity = '0';
+      document.getElementById('callOverlay').style.pointerEvents = 'none';
+    } else {
+      document.getElementById('callStatus').textContent = 'Connected';
+    }
+    startTimer();
+  };
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      socket.emit('webrtc_ice', { room: callRoom, candidate: e.candidate, from: myId });
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      endCall();
+    }
+  };
+
+  if (!isIncoming) {
+    // Caller: notify callee and create offer
+    socket.emit('call_request', {
+      room: 'user_' + otherId,
+      caller_id: myId,
+      caller_name: myName,
+      callee_id: otherId,
+      call_type: callType
+    });
+    document.getElementById('callStatus').textContent = 'Ringing...';
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    socket.emit('webrtc_offer', { room: callRoom, offer: offer, from: myId });
+  } else {
+    document.getElementById('callStatus').textContent = 'Connecting...';
+  }
+}
+
+socket.on('call_accepted', async (data) => {
+  document.getElementById('callStatus').textContent = 'Connected';
+});
+
+socket.on('call_rejected', (data) => {
+  document.getElementById('callStatus').textContent = 'Call declined';
+  setTimeout(() => window.location.href = '/messages/' + otherId, 2000);
+});
+
+socket.on('call_ended', (data) => {
+  document.getElementById('callStatus').textContent = 'Call ended';
+  cleanup();
+  setTimeout(() => window.location.href = '/messages/' + otherId, 1500);
+});
+
+socket.on('webrtc_offer', async (data) => {
+  if (data.from === myId) return;
+  if (!pc) return;
+  await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.emit('webrtc_answer', { room: callRoom, answer: answer, from: myId });
+});
+
+socket.on('webrtc_answer', async (data) => {
+  if (data.from === myId) return;
+  if (!pc) return;
+  await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+});
+
+socket.on('webrtc_ice', async (data) => {
+  if (data.from === myId) return;
+  if (!pc) return;
+  try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch(e) {}
+});
+
+function toggleMute() {
+  if (!localStream) return;
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+  const btn = document.getElementById('muteBtn');
+  btn.textContent = isMuted ? '🔇' : '🎤';
+  btn.classList.toggle('active', isMuted);
+}
+
+function toggleVideo() {
+  if (!localStream) return;
+  isVideoOff = !isVideoOff;
+  localStream.getVideoTracks().forEach(t => t.enabled = !isVideoOff);
+  const btn = document.getElementById('videoBtn');
+  btn.textContent = isVideoOff ? '🚫' : '📹';
+  btn.classList.toggle('active', isVideoOff);
+}
+
+function toggleSpeaker() {
+  const btn = document.getElementById('speakerBtn');
+  btn.classList.toggle('active');
+}
+
+function endCall() {
+  socket.emit('call_ended', { room: callRoom, from: myId });
+  cleanup();
+  window.location.href = '/messages/' + otherId;
+}
+
+function cleanup() {
+  clearInterval(timerInterval);
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); }
+  if (pc) { pc.close(); pc = null; }
+}
+
+function startTimer() {
+  document.getElementById('callTimer').style.display = 'block';
+  timerInterval = setInterval(() => {
+    callSeconds++;
+    const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+    const s = String(callSeconds % 60).padStart(2, '0');
+    document.getElementById('callTimer').textContent = m + ':' + s;
+  }, 1000);
+}
+
+window.addEventListener('beforeunload', () => {
+  socket.emit('call_ended', { room: callRoom, from: myId });
+  cleanup();
+});
+
+// Start automatically
+startCall();
+</script>
+</body>
+</html>

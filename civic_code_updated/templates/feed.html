@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+{% block title %} — Feed{% endblock %}
+
+{% block extra_styles %}
+.feed-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+@media (max-width: 900px) { .feed-layout { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+.stories-rail {
+  display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 12px;
+  scrollbar-width: none; margin-bottom: 20px;
+}
+.stories-rail::-webkit-scrollbar { display: none; }
+.story-item { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.story-ring {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #9000ff);
+  padding: 2px; transition: transform 0.2s;
+}
+.story-ring:hover { transform: scale(1.08); }
+.story-ring-inner { width: 100%; height: 100%; border-radius: 50%; background: var(--bg); padding: 2px; }
+.story-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: var(--surface2); }
+.story-username { font-size: 0.7rem; color: var(--muted); max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.add-story { width: 60px; height: 60px; border-radius: 50%; background: var(--surface2); border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; transition: border-color 0.2s; }
+.add-story:hover { border-color: var(--primary); }
+
+.compose-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+.compose-row { display: flex; gap: 12px; align-items: flex-start; }
+.compose-avatar { width: 40px; height: 40px; flex-shrink: 0; }
+.compose-body { flex: 1; }
+.compose-textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 12px; font-family: inherit; font-size: 0.95rem; resize: none; outline: none; transition: border 0.2s; min-height: 80px; }
+.compose-textarea:focus { border-color: var(--primary); }
+.compose-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.compose-actions select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; }
+.compose-actions label { cursor: pointer; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; font-size: 0.85rem; color: var(--muted); transition: all 0.2s; }
+.compose-actions label:hover { border-color: var(--primary); color: var(--text); }
+.compose-actions input[type="file"] { display: none; }
+
+.filter-bar { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; margin-bottom: 20px; scrollbar-width: none; }
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-pill {
+  flex-shrink: 0; padding: 6px 16px; border-radius: 99px; font-size: 0.85rem; font-weight: 500;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  text-decoration: none; display: inline-block;
+}
+.filter-pill:hover, .filter-pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.post-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; transition: border-color 0.2s; }
+.post-card:hover { border-color: #333; }
+.post-header { display: flex; align-items: center; gap: 10px; padding: 16px 16px 0; }
+.post-meta { flex: 1; }
+.post-username { font-weight: 600; font-size: 0.95rem; }
+.post-username a { color: var(--text); }
+.post-username a:hover { color: var(--primary); }
+.post-info { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.post-category { padding: 3px 10px; background: color-mix(in srgb, var(--primary) 15%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); color: var(--primary); border-radius: 99px; font-size: 0.72rem; font-weight: 600; }
+.post-content { padding: 14px 16px; font-size: 0.95rem; line-height: 1.6; color: #e0e0e0; white-space: pre-wrap; word-break: break-word; }
+.post-image { width: 100%; max-height: 500px; object-fit: cover; cursor: pointer; }
+.post-actions { display: flex; align-items: center; gap: 4px; padding: 8px 12px 14px; }
+.post-action-btn {
+  display: flex; align-items: center; gap: 5px; padding: 7px 12px;
+  background: transparent; border: 1px solid transparent; border-radius: 10px;
+  color: var(--muted); font-family: inherit; font-size: 0.85rem; cursor: pointer;
+  transition: all 0.2s;
+}
+.post-action-btn:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
+.post-action-btn.liked { color: var(--primary); }
+.post-action-btn.liked:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.spacer { flex: 1; }
+
+.comments-section { border-top: 1px solid var(--border); padding: 14px 16px; display: none; }
+.comments-section.open { display: block; }
+.comment-item { display: flex; gap: 8px; margin-bottom: 10px; }
+.comment-body { background: var(--surface2); border-radius: 12px; padding: 8px 12px; flex: 1; }
+.comment-author { font-size: 0.8rem; font-weight: 600; color: var(--primary); margin-bottom: 2px; }
+.comment-text { font-size: 0.88rem; color: #ccc; }
+.comment-form { display: flex; gap: 8px; margin-top: 10px; }
+.comment-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 14px; border-radius: 10px; font-family: inherit; font-size: 0.88rem; outline: none; }
+.comment-input:focus { border-color: var(--primary); }
+.comment-submit { padding: 9px 16px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-family: inherit; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+
+.sidebar { position: sticky; top: 76px; }
+.sidebar-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.sidebar-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.vibe-bar-wrap { background: var(--surface2); border-radius: 99px; height: 8px; margin: 8px 0; overflow: hidden; }
+.vibe-bar { height: 100%; border-radius: 99px; transition: width 0.5s; }
+.vibe-number { font-size: 2rem; font-weight: 700; }
+
+.search-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+.search-input { flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; }
+.search-input:focus { border-color: var(--primary); }
+.search-btn { padding: 10px 16px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 12px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+.search-btn:hover { border-color: var(--primary); color: var(--text); }
+
+.story-viewer { display: none; position: fixed; inset: 0; z-index: 6000; background: rgba(0,0,0,0.95); align-items: center; justify-content: center; }
+.story-viewer.open { display: flex; }
+.story-viewer-inner { position: relative; max-width: 400px; width: 90%; }
+.story-viewer-img { width: 100%; border-radius: 16px; max-height: 80vh; object-fit: contain; }
+.story-close { position: absolute; top: -40px; right: 0; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
+.story-caption { text-align: center; color: #ccc; margin-top: 12px; font-size: 0.9rem; }
+
+.translate-popup { display: none; position: fixed; bottom: 90px; right: 16px; z-index: 3000; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; width: 300px; }
+.translate-popup.open { display: block; }
+{% endblock %}
+
+{% block body %}
+<div class="main-container">
+  <div class="feed-layout">
+    <div class="feed-main">
+      <!-- Stories -->
+      <div class="stories-rail">
+        <div>
+          <label for="storyFile" title="Add Story">
+            <div class="add-story" title="Add Story">+</div>
+          </label>
+          <form id="storyForm" method="POST" action="/story/add" enctype="multipart/form-data" style="display:none">
+            <input type="file" id="storyFile" name="image" accept="image/*,video/*" onchange="document.getElementById('storyForm').submit()">
+            <input type="hidden" name="caption" value="">
+          </form>
+          <div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:4px;">Add</div>
+        </div>
+        {% for su in story_users %}
+        <div class="story-item" onclick="viewStories({{ su.stories | tojson }})">
+          <div class="story-ring">
+            <div class="story-ring-inner">
+              {% if su.avatar %}
+              <img src="/uploads/{{ su.avatar }}" class="story-avatar" alt="">
+              {% else %}
+              <div class="story-avatar" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:var(--primary);">{{ su.username[0].upper() }}</div>
+              {% endif %}
+            </div>
+          </div>
+          <span class="story-username">{{ su.username }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Search bar -->
+      <form class="search-bar" action="/" method="GET">
+        {% if selected_cat %}<input type="hidden" name="cat" value="{{ selected_cat }}">{% endif %}
+        <input class="search-input" name="q" placeholder="Search posts..." value="{{ search }}">
+        <button type="submit" class="search-btn">🔍</button>
+      </form>
+
+      <!-- Category filter -->
+      <div class="filter-bar">
+        <a href="/" class="filter-pill {% if not selected_cat %}active{% endif %}">All</a>
+        {% for cat in categories %}
+        <a href="/?cat={{ cat }}" class="filter-pill {% if selected_cat == cat %}active{% endif %}">{{ cat }}</a>
+        {% endfor %}
+      </div>
+
+      <!-- Compose -->
+      <div class="compose-card">
+        <form method="POST" action="/post" enctype="multipart/form-data">
+          <div class="compose-row">
+            <div class="avatar compose-avatar" style="width:40px;height:40px;">
+              {% if user.avatar %}
+              <img src="/uploads/{{ user.avatar }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+              {% else %}
+              <div style="width:40px;height:40px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);font-size:1.1rem;">{{ user.username[0].upper() }}</div>
+              {% endif %}
+            </div>
+            <div class="compose-body">
+              <textarea class="compose-textarea" name="content" placeholder="What's your POV? 🔥" required></textarea>
+              <div class="compose-actions">
+                <select name="category" class="input" style="width:auto;padding:8px 12px;">
+                  {% for cat in categories %}
+                  <option value="{{ cat }}">{{ cat }}</option>
+                  {% endfor %}
+                </select>
+                <label for="postImage">📷 Photo</label>
+                <input type="file" id="postImage" name="image" accept="image/*,video/*">
+                <button type="submit" class="btn btn-primary btn-sm" style="margin-left:auto;">Post 🚀</button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Feed posts -->
+      {% if not posts %}
+      <div style="text-align:center;padding:60px 20px;color:var(--muted);">
+        <div style="font-size:3rem;margin-bottom:12px;">🌐</div>
+        <p>No posts yet{% if selected_cat %} in {{ selected_cat }}{% endif %}. Be the first to share your POV!</p>
+      </div>
+      {% endif %}
+
+      {% for post in posts %}
+      <div class="post-card" id="post-{{ post.id }}">
+        <div class="post-header">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);flex-shrink:0;overflow:hidden;">
+            {% if post.avatar %}
+            <img src="/uploads/{{ post.avatar }}" style="width:100%;height:100%;object-fit:cover;">
+            {% else %}{{ post.username[0].upper() }}{% endif %}
+          </div>
+          <div class="post-meta">
+            <div class="post-username">
+              <a href="/profile/{{ post.username }}">@{{ post.username }}</a>
+            </div>
+            <div class="post-info">{{ post.created_at[:16] }}</div>
+          </div>
+          <span class="post-category">{{ post.category }}</span>
+        </div>
+        {% if post.image_path %}
+        <img src="/uploads/{{ post.image_path }}" class="post-image" onclick="openImageModal(this.src)" alt="Post image">
+        {% endif %}
+        <div class="post-content">{{ post.content }}</div>
+        <div class="post-actions">
+          <button class="post-action-btn {% if post.liked %}liked{% endif %}" onclick="likePost({{ post.id }}, this)" id="like-{{ post.id }}">
+            <span>{{ '❤️' if post.liked else '🤍' }}</span>
+            <span class="like-count">{{ post.like_count }}</span>
+          </button>
+          <button class="post-action-btn" onclick="toggleComments({{ post.id }})">
+            💬 <span>{{ post.comment_count }}</span>
+          </button>
+          <button class="post-action-btn" onclick="translatePost('{{ post.id }}', this)">🌍 Translate</button>
+          <div class="spacer"></div>
+          <button class="post-action-btn" onclick="openReportPost({{ post.id }})">⚑</button>
+        </div>
+        <div class="comments-section" id="comments-{{ post.id }}">
+          <div class="comments-list" id="comments-list-{{ post.id }}"></div>
+          <div class="comment-form">
+            <input class="comment-input" id="comment-input-{{ post.id }}" placeholder="Say something...">
+            <button class="comment-submit" onclick="submitComment({{ post.id }})">Send</button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div style="width:48px;height:48px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:var(--primary);overflow:hidden;flex-shrink:0;">
+            {% if user.avatar %}<img src="/uploads/{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover;">{% else %}{{ user.username[0].upper() }}{% endif %}
+          </div>
+          <div>
+            <div style="font-weight:700;">@{{ user.username }}</div>
+            <div style="font-size:0.8rem;color:var(--muted);">{{ user.full_name or '' }}</div>
+          </div>
+        </div>
+        <h3>Vibe Score</h3>
+        <div class="vibe-number" style="color:{{ vibe_color }};">{{ user.behavior_score }}</div>
+        <div class="vibe-bar-wrap">
+          <div class="vibe-bar" style="width:{{ user.behavior_score }}%;background:{{ vibe_color }};"></div>
+        </div>
+        <div class="vibe-badge" style="background:{{ vibe_color }}22;color:{{ vibe_color }};border:1px solid {{ vibe_color }}44;margin-top:6px;">{{ vibe_label }}</div>
+        <a href="/settings" style="display:block;margin-top:14px;font-size:0.85rem;color:var(--muted);">⚙️ Settings</a>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>Quick Actions</h3>
+        <a href="/ai-chat" class="btn btn-ghost" style="width:100%;margin-bottom:8px;justify-content:center;">🤖 Chat with {{ user.ai_name or 'AI' }}</a>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;" onclick="openTranslator()">🌍 Translator</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Story viewer -->
+<div class="story-viewer" id="storyViewer" onclick="closeStories(event)">
+  <div class="story-viewer-inner">
+    <button class="story-close" onclick="closeStories()">✕</button>
+    <img class="story-viewer-img" id="storyImg" src="" alt="">
+    <p class="story-caption" id="storyCap"></p>
+  </div>
+</div>
+
+<!-- Image modal -->
+<div class="modal-overlay" id="imgModal" onclick="this.classList.remove('open')">
+  <img id="imgModalSrc" src="" style="max-width:90vw;max-height:85vh;border-radius:12px;object-fit:contain;" onclick="event.stopPropagation()">
+</div>
+
+<!-- Report post modal -->
+<div class="modal-overlay" id="reportPostModal">
+  <div class="modal">
+    <h3>Report Post</h3>
+    <input class="input" id="reportPostReason" placeholder="Reason for reporting..." style="margin-bottom:12px;">
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" onclick="submitReportPost()">Submit</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('reportPostModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Translator popup -->
+<div class="translate-popup" id="translatePopup">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <strong style="font-size:0.9rem;">🌍 Translator</strong>
+    <button onclick="document.getElementById('translatePopup').classList.remove('open')" style="background:none;border:none;color:var(--muted);cursor:pointer;">✕</button>
+  </div>
+  <textarea class="input" id="translateText" placeholder="Enter text to translate..." style="margin-bottom:8px;min-height:80px;"></textarea>
+  <select class="input" id="translateLang" style="margin-bottom:8px;">
+    <option>Spanish</option><option>French</option><option>Hindi</option><option>Arabic</option>
+    <option>Portuguese</option><option>German</option><option>Japanese</option><option>Korean</option>
+    <option>Italian</option><option>Russian</option><option>Chinese</option><option>Turkish</option>
+  </select>
+  <button class="btn btn-primary btn-sm" style="width:100%;" onclick="doTranslate()">Translate</button>
+  <div id="translateResult" style="margin-top:10px;font-size:0.9rem;color:#ccc;line-height:1.5;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let reportingPostId = null;
+
+function likePost(id, btn) {
+  fetch(`/post/${id}/like`, {method:'POST'})
+    .then(r => r.json())
+    .then(d => {
+      btn.querySelector('span').textContent = d.liked ? '❤️' : '🤍';
+      btn.querySelectorAll('span')[1].textContent = d.count;
+      btn.classList.toggle('liked', d.liked);
+    });
+}
+
+function toggleComments(id) {
+  const el = document.getElementById(`comments-${id}`);
+  if (!el.classList.contains('open')) {
+    el.classList.add('open');
+    fetch(`/post/${id}/comments`)
+      .then(r => r.json())
+      .then(data => {
+        const list = document.getElementById(`comments-list-${id}`);
+        list.innerHTML = '';
+        data.forEach(c => {
+          list.innerHTML += `<div class="comment-item">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:var(--primary);flex-shrink:0;">${c.username[0].toUpperCase()}</div>
+            <div class="comment-body"><div class="comment-author">@${c.username}</div><div class="comment-text">${escHtml(c.content)}</div></div>
+          </div>`;
+        });
+      });
+  } else {
+    el.classList.remove('open');
+  }
+}
+
+function submitComment(id) {
+  const input = document.getElementById(`comment-input-${id}`);
+  const content = input.value.trim();
+  if (!content) return;
+  const form = new FormData();
+  form.append('content', content);
+  fetch(`/post/${id}/comment`, {method:'POST', body: form})
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) return;
+      const list = document.getElementById(`comments-list-${id}`);
+      list.innerHTML += `<div class="comment-item">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:var(--primary);flex-shrink:0;">${d.username[0].toUpperCase()}</div>
+        <div class="comment-body"><div class="comment-author">@${d.username}</div><div class="comment-text">${escHtml(d.content)}</div></div>
+      </div>`;
+      input.value = '';
+    });
+}
+
+function translatePost(id, btn) {
+  const el = document.getElementById(`post-${id}`);
+  const content = el.querySelector('.post-content').textContent;
+  document.getElementById('translateText').value = content;
+  document.getElementById('translatePopup').classList.add('open');
+}
+
+function openTranslator() {
+  document.getElementById('translatePopup').classList.add('open');
+}
+
+function doTranslate() {
+  const text = document.getElementById('translateText').value.trim();
+  const lang = document.getElementById('translateLang').value;
+  const resultEl = document.getElementById('translateResult');
+  if (!text) return;
+  resultEl.textContent = 'Translating...';
+  fetch('/translate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text, lang})
+  }).then(r => r.json()).then(d => {
+    resultEl.textContent = d.translated || d.error || 'Error';
+  });
+}
+
+function openReportPost(id) {
+  reportingPostId = id;
+  document.getElementById('reportPostModal').classList.add('open');
+}
+
+function submitReportPost() {
+  const reason = document.getElementById('reportPostReason').value.trim();
+  if (!reason) return;
+  const form = new FormData();
+  form.append('reason', reason);
+  fetch(`/post/${reportingPostId}/report`, {method:'POST', body:form})
+    .then(() => {
+      document.getElementById('reportPostModal').classList.remove('open');
+      showToast('Report submitted. Thanks!', 'success');
+    });
+}
+
+let currentStories = [], storyIndex = 0;
+function viewStories(stories) {
+  currentStories = stories; storyIndex = 0;
+  showStory(0);
+  document.getElementById('storyViewer').classList.add('open');
+}
+function showStory(i) {
+  if (i >= currentStories.length) { closeStories(); return; }
+  const s = currentStories[i];
+  document.getElementById('storyImg').src = `/uploads/${s.image_path}`;
+  document.getElementById('storyCap').textContent = s.caption || '';
+  setTimeout(() => showStory(i + 1), 5000);
+}
+function closeStories(e) {
+  if (e && e.target !== document.getElementById('storyViewer')) return;
+  document.getElementById('storyViewer').classList.remove('open');
+}
+
+function openImageModal(src) {
+  document.getElementById('imgModalSrc').src = src;
+  document.getElementById('imgModal').classList.add('open');
+}
+
+function showToast(msg, type) {
+  const el = document.createElement('div');
+  el.className = `flash ${type}`; el.textContent = msg;
+  document.getElementById('flashMessages').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}

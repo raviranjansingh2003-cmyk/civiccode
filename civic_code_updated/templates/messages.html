@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %} — Messages{% endblock %}
+
+{% block extra_styles %}
+.messages-layout { display: grid; grid-template-columns: 300px 1fr; gap: 0; height: calc(100vh - 76px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+@media (max-width: 768px) { .messages-layout { grid-template-columns: 1fr; } .msg-sidebar { display: block; } }
+.msg-sidebar { border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+.msg-sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); }
+.msg-sidebar-header h2 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+.phone-form { display: flex; gap: 6px; }
+.phone-form input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; }
+.phone-form input::placeholder { color: var(--muted); }
+.phone-form button { padding: 8px 12px; background: var(--primary); color: #fff; border: none; border-radius: 10px; cursor: pointer; font-size: 0.82rem; }
+.conv-list { flex: 1; overflow-y: auto; }
+.conv-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--border); text-decoration: none; color: var(--text); }
+.conv-item:hover, .conv-item.active { background: var(--surface2); }
+.conv-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--primary); flex-shrink: 0; font-size: 1.1rem; overflow: hidden; }
+.conv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.conv-info { flex: 1; min-width: 0; }
+.conv-name { font-weight: 600; font-size: 0.9rem; }
+.conv-last { font-size: 0.78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.conv-badge { background: var(--primary); color: #fff; font-size: 0.65rem; padding: 2px 7px; border-radius: 99px; font-weight: 700; }
+.msg-empty { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: var(--muted); }
+.msg-empty .icon { font-size: 3rem; }
+.new-chat-section { padding: 14px; border-top: 1px solid var(--border); }
+.new-chat-section h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+.user-chip { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; cursor: pointer; transition: background 0.15s; text-decoration: none; color: var(--text); }
+.user-chip:hover { background: var(--surface2); }
+.user-chip-ava { width: 30px; height: 30px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--primary); font-size: 0.85rem; overflow: hidden; flex-shrink: 0; }
+.user-chip-ava img { width: 100%; height: 100%; object-fit: cover; }
+{% endblock %}
+
+{% block body %}
+<div class="main-container" style="padding-top:72px;padding-bottom:0;height:100vh;display:flex;flex-direction:column;">
+  <div class="messages-layout" style="flex:1;">
+    <div class="msg-sidebar">
+      <div class="msg-sidebar-header">
+        <h2>💬 Messages</h2>
+        <form class="phone-form" action="/find-by-phone" method="POST">
+          <input type="tel" name="phone" placeholder="Find by phone number...">
+          <button type="submit">Find</button>
+        </form>
+      </div>
+      <div class="conv-list">
+        {% for conv in conversations %}
+        <a href="/messages/{{ conv.other_id }}" class="conv-item">
+          <div class="conv-avatar">
+            {% if conv.avatar %}<img src="/uploads/{{ conv.avatar }}" alt="">{% else %}{{ conv.username[0].upper() }}{% endif %}
+          </div>
+          <div class="conv-info">
+            <div class="conv-name">@{{ conv.username }}</div>
+            <div class="conv-last">{{ conv.last_msg or 'No messages yet' }}</div>
+          </div>
+          {% if conv.unread_count > 0 %}
+          <span class="conv-badge">{{ conv.unread_count }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+        {% if not conversations %}
+        <div style="padding:30px 16px;text-align:center;color:var(--muted);font-size:0.9rem;">No conversations yet.<br>Start chatting below!</div>
+        {% endif %}
+      </div>
+      <div class="new-chat-section">
+        <h4>Start a chat</h4>
+        <div style="max-height:180px;overflow-y:auto;">
+          {% for u in all_users %}
+          <a href="/messages/{{ u.id }}" class="user-chip">
+            <div class="user-chip-ava">
+              {% if u.avatar %}<img src="/uploads/{{ u.avatar }}" alt="">{% else %}{{ u.username[0].upper() }}{% endif %}
+            </div>
+            @{{ u.username }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="msg-empty">
+      <div class="icon">💬</div>
+      <p>Select a conversation to start chatting</p>
+      <p style="font-size:0.85rem;max-width:260px;text-align:center;">Or find someone by their phone number above</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

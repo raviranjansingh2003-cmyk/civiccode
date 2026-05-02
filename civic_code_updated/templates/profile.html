@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %} — @{{ user.username }}{% endblock %}
+
+{% block extra_styles %}
+.profile-cover { height: 200px; background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 30%, var(--bg)), var(--bg)); position: relative; border-radius: var(--radius) var(--radius) 0 0; }
+.profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+.profile-header { padding: 0 24px 24px; position: relative; }
+.profile-avatar-wrap { position: relative; display: inline-block; margin-top: -40px; }
+.profile-avatar-img { width: 80px; height: 80px; border-radius: 50%; border: 4px solid var(--surface); background: var(--surface2); object-fit: cover; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: var(--primary); }
+.profile-actions { position: absolute; top: 16px; right: 24px; display: flex; gap: 8px; }
+.profile-name { font-size: 1.4rem; font-weight: 700; margin: 12px 0 4px; }
+.profile-handle { color: var(--muted); font-size: 0.9rem; }
+.profile-bio { color: #ccc; font-size: 0.92rem; margin: 10px 0; line-height: 1.5; max-width: 480px; }
+.profile-stats { display: flex; gap: 24px; margin: 16px 0; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.3rem; font-weight: 700; }
+.stat-label { font-size: 0.75rem; color: var(--muted); }
+.posts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+@media (max-width: 600px) { .posts-grid { grid-template-columns: repeat(2, 1fr); } }
+.grid-post { aspect-ratio: 1; background: var(--surface2); overflow: hidden; cursor: pointer; position: relative; }
+.grid-post img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
+.grid-post:hover img { transform: scale(1.05); }
+.grid-post-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 16px; opacity: 0; transition: opacity 0.2s; color: #fff; font-size: 0.85rem; font-weight: 600; }
+.grid-post:hover .grid-post-overlay { opacity: 1; }
+.grid-post-text { padding: 12px; font-size: 0.82rem; line-height: 1.4; color: #ccc; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+{% endblock %}
+
+{% block body %}
+<div class="main-container">
+  <div class="profile-card">
+    <div class="profile-cover"></div>
+    <div class="profile-header">
+      <div class="profile-avatar-wrap">
+        {% if user.avatar %}
+        <img src="/uploads/{{ user.avatar }}" class="profile-avatar-img" alt="">
+        {% else %}
+        <div class="profile-avatar-img" style="display:flex;align-items:center;justify-content:center;">{{ user.username[0].upper() }}</div>
+        {% endif %}
+      </div>
+      <div class="profile-actions">
+        {% if me.id != user.id %}
+        <button class="btn {% if is_following %}btn-ghost{% else %}btn-primary{% endif %} btn-sm" id="followBtn" onclick="toggleFollow({{ user.id }})">
+          {% if is_following %}Following{% else %}Follow{% endif %}
+        </button>
+        <a href="/messages/{{ user.id }}" class="btn btn-ghost btn-sm">💬 Message</a>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('reportUserModal').classList.add('open')">⚑</button>
+        {% else %}
+        <a href="/settings" class="btn btn-ghost btn-sm">✏️ Edit Profile</a>
+        {% endif %}
+      </div>
+      <div class="profile-name">{{ user.full_name or user.username }}</div>
+      <div class="profile-handle">@{{ user.username }}</div>
+      {% if user.bio %}
+      <p class="profile-bio">{{ user.bio }}</p>
+      {% endif %}
+      <div class="profile-stats">
+        <div class="stat">
+          <div class="stat-num">{{ posts | length }}</div>
+          <div class="stat-label">Posts</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="followerCount">{{ followers }}</div>
+          <div class="stat-label">Followers</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">{{ following }}</div>
+          <div class="stat-label">Following</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="vibe-badge" style="background:{{ vibe_color }}22;color:{{ vibe_color }};border:1px solid {{ vibe_color }}44;">
+          ⚡ Vibe: {{ user.behavior_score }}/100 · {{ vibe_label }}
+        </span>
+        {% if user.phone %}
+        <span style="font-size:0.8rem;color:var(--muted);">📞 Has phone</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if posts %}
+  <div class="posts-grid">
+    {% for post in posts %}
+    <div class="grid-post">
+      {% if post.image_path %}
+      <img src="/uploads/{{ post.image_path }}" alt="">
+      <div class="grid-post-overlay">❤️ {{ post.like_count }} &nbsp; 💬 {{ post.comment_count }}</div>
+      {% else %}
+      <div class="grid-post-text">{{ post.content }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:60px;color:var(--muted);">
+    <div style="font-size:3rem;margin-bottom:12px;">📭</div>
+    <p>No posts yet</p>
+  </div>
+  {% endif %}
+</div>
+
+{% if me.id != user.id %}
+<div class="modal-overlay" id="reportUserModal">
+  <div class="modal">
+    <h3>Report @{{ user.username }}</h3>
+    <textarea class="input" id="reportReason" placeholder="Reason for reporting..." style="margin-bottom:12px;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" onclick="submitReport()">Submit Report</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('reportUserModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleFollow(id) {
+  fetch(`/follow/${id}`, {method:'POST'})
+    .then(r => r.json())
+    .then(d => {
+      const btn = document.getElementById('followBtn');
+      btn.textContent = d.following ? 'Following' : 'Follow';
+      btn.className = `btn ${d.following ? 'btn-ghost' : 'btn-primary'} btn-sm`;
+      document.getElementById('followerCount').textContent = d.count;
+    });
+}
+
+function submitReport() {
+  const reason = document.getElementById('reportReason').value.trim();
+  if (!reason) return;
+  const form = new FormData(); form.append('reason', reason);
+  fetch('/report/user/{{ user.id }}', {method:'POST', body:form}).then(() => {
+    document.getElementById('reportUserModal').classList.remove('open');
+  });
+}
+</script>
+{% endblock %}
